@@ -13,7 +13,7 @@ from torch.nn.parameter import Parameter
 
 from colossalai.context.parallel_mode import ParallelMode
 from colossalai.core import global_context as gpc
-from colossalai.gemini.memory_tracer import MemStatsCollector, StaticMemStatsCollector
+from colossalai.gemini.memory_tracer import MemStatsCollector #, StaticMemStatsCollector
 from colossalai.gemini.ophooks import register_ophooks_recursively
 from colossalai.gemini.paramhooks import BaseParamHookMgr
 from colossalai.gemini.stateful_tensor import TensorState

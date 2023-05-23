@@ -197,6 +197,8 @@ class Trainer:
             # stop when max iter is reached
             if self._exceed_max_step():
                 break
+            # import pdb
+            # pdb.set_trace()
 
         self._call_timer(action="stop", item="Train-epoch", keep_in_history=True)
         self._call_hooks("after_train_epoch")

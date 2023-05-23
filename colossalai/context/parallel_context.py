@@ -375,8 +375,9 @@ class ParallelContext(metaclass=SingletonMeta):
 
         # None will give the default global process group for pytorch dist operations
         ranks = list(range(world_size))
-        cpu_group = dist.new_group(ranks, backend='gloo') if dist.get_backend() != 'gloo' else None
-        self._register_dist(rank, world_size, dist.GroupMember.WORLD, cpu_group, ranks, ParallelMode.GLOBAL)
+        cpu_group = dist.new_group(ranks, backend='nccl') if dist.get_backend() != 'gloo' else None
+        global_group = dist.new_group(ranks, backend='nccl')
+        self._register_dist(rank, world_size, global_group, cpu_group, ranks, ParallelMode.GLOBAL)
         self.add_global_rank(ParallelMode.GLOBAL, rank)
 
     def _register_dist(self, local_rank, world_size, process_group, cpu_group, ranks_in_group, mode):
@@ -515,7 +516,6 @@ class ParallelContext(metaclass=SingletonMeta):
         if device_ordinal is None:
             devices_per_node = torch.cuda.device_count()
             device_ordinal = global_rank % devices_per_node
-
         torch.cuda.set_device(device_ordinal)
         if self._verbose:
             self._logger.info(f'process rank {global_rank} is bound to device {device_ordinal}')

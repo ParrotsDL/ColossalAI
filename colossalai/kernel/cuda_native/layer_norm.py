@@ -31,7 +31,7 @@ class FusedLayerNormAffineFunction(torch.autograd.Function):
         global layer_norm
         if layer_norm is None:
 
-            layer_norm = LayerNormBuilder().load()
+            layer_norm = torch.nn.LayerNorm(normalized_shape) #LayerNormBuilder().load()
         output, mean, invvar = layer_norm.forward_affine(input_, ctx.normalized_shape, weight_, bias_, ctx.eps)
         ctx.layernorm_op = layer_norm
         ctx.save_for_backward(input_, weight_, bias_, mean, invvar)

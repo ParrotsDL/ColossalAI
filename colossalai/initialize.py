@@ -98,13 +98,17 @@ def launch(config: Union[str, Path, Config, Dict],
     # init default process group
     gpc.init_global_dist(rank, world_size, backend, host, port)
 
+    if torch.cuda.is_available():
+        # if local rank is not given, calculate automatically
+        gpc.set_device(local_rank)
+
     # init process groups for different parallel modes from config
     gpc.init_parallel_groups()
 
     # set cuda device
-    if torch.cuda.is_available():
-        # if local rank is not given, calculate automatically
-        gpc.set_device(local_rank)
+    # if torch.cuda.is_available():
+    #     # if local rank is not given, calculate automatically
+    #     gpc.set_device(local_rank)
 
     # set the number of processes running on the same node
     gpc.detect_num_processes_on_current_node()
@@ -145,6 +149,9 @@ def launch_from_slurm(config: Union[str, Path, Config, Dict],
             f"Could not find {e} in the SLURM environment, visit https://www.colossalai.org/ for more information on launching with SLURM"
         )
 
+    # import pdb
+    # pdb.set_trace()
+    print(host, port, world_size, rank, backend)
     launch(config=config,
            rank=rank,
            world_size=world_size,

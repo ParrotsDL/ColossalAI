@@ -9,10 +9,10 @@ from torch.distributed import ReduceOp
 from colossalai.context import ParallelMode
 from colossalai.core import global_context as gpc
 
-_all_gather_func = dist._all_gather_base \
-    if "all_gather_into_tensor" not in dir(dist) else dist.all_gather_into_tensor
-_reduce_scatter_func = dist._reduce_scatter_base \
-    if "reduce_scatter_tensor" not in dir(dist) else dist.reduce_scatter_tensor
+# _all_gather_func = dist._all_gather_base \
+#     if "all_gather_into_tensor" not in dir(dist) else dist.all_gather_into_tensor
+# _reduce_scatter_func = dist._reduce_scatter_base \
+#     if "reduce_scatter_tensor" not in dir(dist) else dist.reduce_scatter_tensor
 
 
 def all_gather(tensor: Tensor, dim: int, parallel_mode: ParallelMode, async_op: bool = False) -> Tensor:
@@ -39,10 +39,13 @@ def all_gather(tensor: Tensor, dim: int, parallel_mode: ParallelMode, async_op: 
         work = None
     else:
         tensor_in = tensor.contiguous() if dim == 0 else tensor.transpose(0, dim).contiguous()
-        out_shape = (tensor_in.shape[0] * depth,) + tensor_in.shape[1:]
-        tensor_out = torch.empty(out_shape, dtype=tensor.dtype, device=tensor.device)
+        # out_shape = (tensor_in.shape[0] * depth,) + tensor_in.shape[1:]
+        # tensor_out = torch.empty(out_shape, dtype=tensor.dtype, device=tensor.device)
+        tensor_out_list = [torch.empty(tensor_in.shape, dtype=tensor.dtype, device=tensor.device) for _ in range(depth)]
         group = gpc.get_cpu_group(parallel_mode) if tensor.device.type == "cpu" else gpc.get_group(parallel_mode)
-        work = _all_gather_func(tensor_out, tensor_in, group=group, async_op=async_op)
+        # work = _all_gather_func(tensor_out, tensor_in, group=group, async_op=async_op)
+        work = all_gather(tensor_out_list, tensor_in, group=group, async_op=async_op)
+        tensor_out = torch.tensor(tensor_out_list)
         out = tensor_out if dim == 0 else tensor_out.transpose(0, dim)
     if async_op:
         return out, work
@@ -85,7 +88,9 @@ def reduce_scatter(tensor: Tensor,
         out_shape = (tensor_in.shape[0] // depth,) + tensor_in.shape[1:]
         tensor_out = torch.empty(out_shape, dtype=tensor.dtype, device=tensor.device)
         group = gpc.get_cpu_group(parallel_mode) if tensor.device.type == "cpu" else gpc.get_group(parallel_mode)
-        work = _reduce_scatter_func(tensor_out, tensor_in, op=op, group=group, async_op=async_op)
+        # work = _reduce_scatter_func(tensor_out, tensor_in, op=op, group=group, async_op=async_op)
+        tensor_in_chunked = tensor_in.chunk(depth,0)
+        work = reduce_scatter(tensor_out, tensor_in_chunked, op=op, group=group, async_op=async_op)
         out = tensor_out if dim == 0 else tensor_out.transpose(0, dim)
     if async_op:
         return out, work
@@ -155,6 +160,8 @@ def broadcast(tensor: Tensor, src: int, parallel_mode: ParallelMode, async_op: b
     else:
         out = tensor.contiguous()
         group = gpc.get_cpu_group(parallel_mode) if tensor.device.type == "cpu" else gpc.get_group(parallel_mode)
+        # import pdb
+        # pdb.set_trace()
         work = dist.broadcast(out, src=src, group=group, async_op=async_op)
     if async_op:
         return out, work

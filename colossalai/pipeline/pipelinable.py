@@ -11,6 +11,8 @@ from colossalai.core import global_context as gpc
 from colossalai.context import ParallelMode
 from .layer_spec import LayerSpec
 
+import os
+rrank = int(os.environ['SLURM_PROCID'])
 
 class PipelinableContext(InsertPostInitMethodToModuleSubClasses):
     """
@@ -218,7 +220,21 @@ class PipelinableContext(InsertPostInitMethodToModuleSubClasses):
         module_list_in_partition = torch.nn.ModuleList(module_list_in_partition)
         pipeline_model = PipelinableModel(module_list_in_partition, front_func_dict_in_partition,
                                           behind_func_dict_in_partition)
-
+        # import pdb
+        # pdb.set_trace()
+        m_list = '\n'
+        for module in pipeline_model._module_list:
+            m_list += f'{module.full_name} {module.__class__} {rrank} '
+            if id(module) in pipeline_model._front_func_dict:
+                m_list += 'front func '
+            if id(module) in pipeline_model._behind_func_dict:
+                m_list += 'back func '
+            m_list += '\n'
+        # import pdb
+        # pdb.set_trace()
+        print(m_list)
+        # print(pipeline_model._front_func_dict, rrank)
+        # print(pipeline_model._behind_func_dict, rrank)
         return pipeline_model
 
 
@@ -232,7 +248,16 @@ class PipelinableModel(torch.nn.Module):
 
     def forward(self, *input_tensor, **kwargs):
         for module in self._module_list:
-
+            # import pdb
+            # pdb.set_trace()
+            # print("PPPPPP---NAME---is: ", module.full_name ,module.__class__, rrank)
+            # print("\tatt: ",kwargs['attention_mask'].shape, kwargs['attention_mask'].sum())
+            # print("\tinp: ",kwargs['input_ids'].shape, kwargs['input_ids'].sum())
+            # if isinstance(input_tensor, (list,tuple)):
+            #     print('\t input: ', [(x.shape, x.sum()) for x in input_tensor])
+            # else:
+            #     print('\t input: ', (input_tensor.shape, input_tensor.sum()))
+            
             if id(module) in self._front_func_dict:
                 input_tensor = exec_funcs_with_kwargs(self._front_func_dict, id(module), input_tensor, kwargs)
 
@@ -251,4 +276,15 @@ class PipelinableModel(torch.nn.Module):
             if id(module) in self._behind_func_dict:
                 input_tensor = exec_funcs_with_kwargs(self._behind_func_dict, id(module), input_tensor, kwargs)
 
+            # if isinstance(input_tensor, (list,tuple)):
+            #     print('\t output: ', [(x.shape, x.sum()) for x in input_tensor])
+            # else:
+            #     print('\t output: ', (input_tensor.shape, input_tensor.sum()))
+            # import pdb
+            # pdb.set_trace()
+
+            # print("MMMMMMMMMMMMMMMMMMMMMMM:\n\t\t",rrank,
+            #         "Allocated: ", torch.cuda.memory_allocated()/(1024**3), "G\n\t\t",
+            #         "Cached   : ", torch.cuda.memory_cached()/(1024**3), "G\n"
+            #     )
         return input_tensor

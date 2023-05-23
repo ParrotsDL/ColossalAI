@@ -78,12 +78,12 @@ def recv_obj_meta(obj_shape, prev_rank=None) -> torch.Size:
         dist.recv(recv_obj_nums, prev_rank)
         if recv_obj_nums.item() == 1:
             recv_shape = recv_meta_helper(prev_rank, tensor_kwargs)
-            obj_shape = torch.Size(recv_shape)
+            obj_shape = torch.Size(tuple(recv_shape.cpu().numpy().tolist()))
         else:
             obj_shape = []
             for i in range(recv_obj_nums.item()):
                 recv_shape = recv_meta_helper(prev_rank, tensor_kwargs)
-                obj_shape.append(torch.Size(recv_shape))
+                obj_shape.append(torch.Size(tuple(recv_shape.cpu().numpy().tolist())))
 
     return obj_shape
 

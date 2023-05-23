@@ -14,6 +14,9 @@ from .utils import split_tensor_into_1d_equal_chunks, gather_split_1d_tensor
 
 TensorShape = Union[torch.Size, List[int], Tuple[int]]
 
+Show_Flag = False
+import os
+rrank = int(os.environ['SLURM_PROCID'])
 
 def _get_tensor_shape(tensor_shape: TensorShape, chunk_tensor: bool = False) -> Tuple[TensorShape, bool]:
     """get the exact tensor shape when communicating and return whether the tensor is a chunk
@@ -145,16 +148,16 @@ def _communicate(object_send_next: Union[torch.Tensor, List[torch.Tensor]] = Non
 
     ops = []
     if object_send_prev is not None:
-        filling_ops_queue(object_send_prev, dist.isend, prev_rank, ops)
+        filling_ops_queue(object_send_prev, dist.send, prev_rank, ops)
 
     if tensor_recv_prev is not None:
-        filling_ops_queue(tensor_recv_prev, dist.irecv, prev_rank, ops)
+        filling_ops_queue(tensor_recv_prev, dist.recv, prev_rank, ops)
 
     if tensor_recv_next is not None:
-        filling_ops_queue(tensor_recv_next, dist.irecv, next_rank, ops)
+        filling_ops_queue(tensor_recv_next, dist.recv, next_rank, ops)
 
     if object_send_next is not None:
-        filling_ops_queue(object_send_next, dist.isend, next_rank, ops)
+        filling_ops_queue(object_send_next, dist.send, next_rank, ops)
 
     if len(ops) > 0:
         reqs = dist.batch_isend_irecv(ops)
@@ -195,6 +198,8 @@ def recv_forward(input_tensor_shape,
     Returns:
         Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]: The input tensor or input tensor list.
     """
+    if Show_Flag:
+        print("11-R_F: ",input_tensor_shape, rrank)
     if gpc.is_pipeline_first_stage():
         input_tensor = None
     else:
@@ -219,6 +224,8 @@ def recv_backward(output_grad_shape,
     Returns:
         Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]: The input gradient tensor or gradident tensor list.
     """
+    if Show_Flag:
+        print("22-R_B: ", output_grad_shape, rrank)
     if gpc.is_pipeline_last_stage():
         output_tensor_grad = None
     else:
@@ -227,6 +234,13 @@ def recv_backward(output_grad_shape,
                                              next_rank=next_rank,
                                              dtype=dtype,
                                              scatter_gather_tensors=scatter_gather_tensors)
+    # if isinstance(output_tensor_grad, list):
+    #     print("\t 22 grad?l ", [x.requires_grad for x in output_tensor_grad], rrank)
+    # else:
+    #     print("\t 22 grad? ", output_tensor_grad.requires_grad, rrank)
+    # if rrank ==0:
+    #     import pdb 
+    #     pdb.set_trace()
     return output_tensor_grad
 
 
@@ -237,6 +251,12 @@ def send_forward(output_tensor, next_rank=None, scatter_gather_tensors=False) ->
         output_tensor (Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]): Tensor to be sent.
         next_rank (int, optional): The rank of the recipient of the tensor.
     """
+    if Show_Flag:
+        if isinstance(output_tensor, torch.Tensor):
+            oot = output_tensor.shape
+        else:
+            oot = [x.shape for x in output_tensor]
+        print("33-S_F: ", oot, rrank)
     if not gpc.is_pipeline_last_stage():
         _communicate(object_send_next=output_tensor, next_rank=next_rank, scatter_gather_tensors=scatter_gather_tensors)
 
@@ -248,6 +268,16 @@ def send_backward(input_tensor_grad, prev_rank=None, scatter_gather_tensors=Fals
         input_tensor_grad (Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]): Tensor to be sent
         prev_rank (int, optional): The rank of the recipient of the tensor
     """
+    if Show_Flag:
+        if input_tensor_grad is None:
+            oot = input_tensor_grad
+        elif isinstance(input_tensor_grad, torch.Tensor):
+            oot = input_tensor_grad.shape
+        elif input_tensor_grad is None:
+            oot = input_tensor_grad
+        else:
+            oot = [x if x is None else x.shape for x in input_tensor_grad]
+        print("44-S_B: ", oot, rrank)
     if not gpc.is_pipeline_first_stage():
         _communicate(object_send_prev=input_tensor_grad,
                      prev_rank=prev_rank,
@@ -271,6 +301,8 @@ def send_forward_recv_backward(output_tensor,
     Returns:
         Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]: The input gradient tensor.
     """
+    if Show_Flag:
+        print("55-S_F_R_B: ", output_grad_shape, rrank)
     if gpc.is_pipeline_last_stage():
         output_tensor_grad = None
     else:
@@ -300,6 +332,8 @@ def send_backward_recv_forward(input_tensor_grad,
     Returns:
         Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]: The input tensor.
     """
+    if Show_Flag:
+        print("66-S_B_R_F: ", input_tensor_shape, rrank)
     if gpc.is_pipeline_first_stage():
         input_tensor = None
     else:
@@ -330,6 +364,8 @@ def send_forward_recv_forward(output_tensor,
     Returns:
         Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]: The input tensor.
     """
+    if Show_Flag:
+        print("77-S_F_R_F: ", input_tensor_shape, rrank)
     input_tensor, _ = _communicate(object_send_next=output_tensor,
                                    recv_prev=recv_prev,
                                    recv_prev_shape=input_tensor_shape,
@@ -358,6 +394,8 @@ def send_backward_recv_backward(input_tensor_grad,
     Returns:
         Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]: The input gradient tensor.
     """
+    if Show_Flag:
+        print("88-S_B_R_B: ", output_grad_shape, rrank)
     _, output_tensor_grad = _communicate(object_send_prev=input_tensor_grad,
                                          recv_next=recv_next,
                                          recv_next_shape=output_grad_shape,
@@ -392,6 +430,8 @@ def send_forward_backward_recv_forward_backward(
     Returns:
         Tuple(Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]], Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]): (the input tensor, the input gradient tensor)
     """
+    if Show_Flag:
+        print("99-Sfb_Rfb: ",input_tensor_shape, output_grad_shape, rrank)
     input_tensor, output_tensor_grad = _communicate(object_send_next=output_tensor,
                                                     object_send_prev=input_tensor_grad,
                                                     recv_prev=recv_prev,

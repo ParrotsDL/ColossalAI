@@ -33,7 +33,7 @@ class NaiveAMPOptimizer(ColossalaiOptimizer):
     """
 
     def __init__(self, optim: Optimizer, *args, **kwargs):
-        optim = FP16Optimizer(optim, *args, **kwargs)
+        # optim = FP16Optimizer(optim, *args, **kwargs)
         super().__init__(optim)
 
     def backward(self, loss: Tensor):

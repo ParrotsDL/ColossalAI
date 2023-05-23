@@ -11,7 +11,8 @@ from typing import Callable, Dict, List, Optional, Union
 
 import torch
 import torch.distributed as dist
-from torch import inf
+# from torch import inf
+from math import inf
 from torch.nn.parameter import Parameter
 
 from colossalai.constants import IS_TENSOR_PARALLEL, NUM_PARTITIONS, TENSOR_PARALLEL_ATTRIBUTES

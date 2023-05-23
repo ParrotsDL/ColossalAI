@@ -10,7 +10,11 @@ _COLOSSAL_OPS: Dict[str, Callable] = {}
 
 def _register_colo_op(op, func):
     global _COLOSSAL_OPS
-    _COLOSSAL_OPS[op] = func
+    try:
+        hash(op)
+        _COLOSSAL_OPS[op] = func
+    except Exception:
+        pass
 
 
 def colo_op_impl(func):

@@ -1,9 +1,14 @@
 import time
-from contextlib import nullcontext
+# from contextlib import nullcontext
 
 import torch
-from torch.profiler import ProfilerActivity, profile, schedule, tensorboard_trace_handler
+# from torch.profiler import ProfilerActivity, profile, schedule, tensorboard_trace_handler
 
+from contextlib import contextmanager
+
+@contextmanager
+def nullcontext(enter_result=None):
+    yield enter_result
 
 class DummyProfiler:
 
