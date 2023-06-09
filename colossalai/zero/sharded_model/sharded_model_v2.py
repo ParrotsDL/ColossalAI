@@ -277,7 +277,7 @@ class ShardedModelV2(nn.Module):
             with torch.cuda.stream(self.comm_stream):
                 self.reducer.flush()
             torch.cuda.current_stream().wait_stream(self.comm_stream)
-        self.reducer.free()
+        # self.reducer.free()
 
         # 3. shard tensors not dealed in the zero hook
         tensor_list = []
@@ -330,7 +330,7 @@ class ShardedModelV2(nn.Module):
             return
         # used to cheat Pytorch, since we can't return None
         empty_grad = torch.empty_like(grad)
-        free_storage(empty_grad)
+        # free_storage(empty_grad)
         # As torch didn't allow modifying grad in hook, we make a copy
         grad = grad.clone()
         if param.colo_attr.is_replicated:
@@ -348,7 +348,7 @@ class ShardedModelV2(nn.Module):
                 # Average grad by world_size for consistency with PyTorch DDP.
                 grad.data.div_(self.gradient_predivide_factor)
             if self.world_size > 1:
-                grad_chunks = chunk_and_pad(grad, self.reduce_scatter_process_group.size())
+                grad_chunks = chunk_and_pad(grad, self.reduce_scatter_process_group.get_size())
                 self.reducer.reduce_scatter_async(grad_chunks,
                                                   group=self.reduce_scatter_process_group,
                                                   callback_fn=functools.partial(self._reduce_scatter_callback, param))

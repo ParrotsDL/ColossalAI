@@ -22,7 +22,7 @@ else:
 class Bucket:
 
     def __init__(self, shard_size: int, dtype: torch.dtype, device: torch.device, group: ProcessGroup):
-        self.buffer = torch.zeros((group.size(), shard_size), dtype=dtype, device=device)
+        self.buffer = torch.zeros((group.get_size(), shard_size), dtype=dtype, device=device)
         self.group = group
         self.offset = 0
         self.callbacks: List[Callable] = []
@@ -72,7 +72,7 @@ class Bucket:
     def append(self, tensor_list: List[Tensor], callback_fn: Callable):
         # copy data from input_list into bucket
         tensor_size = tensor_list[0].numel()
-        stacked_input = torch.stack(tensor_list).view(self.group.size(), tensor_size)
+        stacked_input = torch.stack(tensor_list).view(self.group.get_size(), tensor_size)
         offset = self.offset
         self.buffer[:, offset:offset + tensor_size].copy_(stacked_input)
         self.offset += tensor_size
@@ -140,7 +140,7 @@ class ReduceScatterBucketer:
                 the reduction executes. Function will be called with a single
                 argument corresponding to the reduced result.
         """
-        world_size = group.size()
+        world_size = group.get_size()
 
         assert (len(input_list) == world_size
                ), f"reduce_scatter received {len(input_list)} inputs, expected group.size() ({world_size})"
@@ -193,8 +193,8 @@ class ReduceScatterBucketer:
         key = (tensor.dtype, tensor.device, group)
         if key not in self.buckets:
             # buckets are divided into world_size pieces, bucket.data shaped (world_size, shard_size)
-            world_size = group.size()
+            world_size = group.get_size()
             shard_size = self._get_shard_size(tensor.element_size(), world_size)
             self.buckets[key] = Bucket(shard_size, tensor.dtype, tensor.device, group)
-        self.buckets[key].alloc()
+        # self.buckets[key].alloc()
         return self.buckets[key]

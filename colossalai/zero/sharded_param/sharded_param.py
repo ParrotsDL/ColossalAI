@@ -63,12 +63,14 @@ class ShardedParamV2(object):
         return self.sharded_data_tensor.is_sharded
 
     def data_payload_reset(self, tensor: torch.Tensor):
-        assert type(tensor) is torch.Tensor
+        # assert type(tensor) is torch.Tensor
         assert tensor.requires_grad is False
         self.sharded_data_tensor.payload_reset(tensor)
 
     def grad_payload_reset(self, tensor: torch.Tensor):
-        assert type(tensor) is torch.Tensor
+        # import pdb
+        # pdb.set_trace()
+        # assert type(tensor) is torch.Tensor
         assert tensor.requires_grad is False
         self.saved_grad.payload_reset(tensor)
 

@@ -44,8 +44,10 @@ def all_gather(tensor: Tensor, dim: int, parallel_mode: ParallelMode, async_op: 
         tensor_out_list = [torch.empty(tensor_in.shape, dtype=tensor.dtype, device=tensor.device) for _ in range(depth)]
         group = gpc.get_cpu_group(parallel_mode) if tensor.device.type == "cpu" else gpc.get_group(parallel_mode)
         # work = _all_gather_func(tensor_out, tensor_in, group=group, async_op=async_op)
-        work = all_gather(tensor_out_list, tensor_in, group=group, async_op=async_op)
-        tensor_out = torch.tensor(tensor_out_list)
+        work = dist.all_gather(tensor_out_list, tensor_in, group=group, async_op=async_op)
+        tensor_out = torch.cat(tensor_out_list, dim=0)
+        # # tensor_out = torch.tensor(tensor_out_list)
+        # tensor_out = torch.stack(tensor_out_list, dim=0)
         out = tensor_out if dim == 0 else tensor_out.transpose(0, dim)
     if async_op:
         return out, work
@@ -90,8 +92,9 @@ def reduce_scatter(tensor: Tensor,
         group = gpc.get_cpu_group(parallel_mode) if tensor.device.type == "cpu" else gpc.get_group(parallel_mode)
         # work = _reduce_scatter_func(tensor_out, tensor_in, op=op, group=group, async_op=async_op)
         tensor_in_chunked = tensor_in.chunk(depth,0)
-        work = reduce_scatter(tensor_out, tensor_in_chunked, op=op, group=group, async_op=async_op)
-        out = tensor_out if dim == 0 else tensor_out.transpose(0, dim)
+        tensor_list = list(tensor_in_chunked)
+        work = dist.reduce_scatter(tensor_out, tensor_list, op=op, group=group, async_op=async_op)
+        out = tensor_out if dim <=0 else tensor_out.transpose(0, dim)
     if async_op:
         return out, work
     else:
