@@ -251,7 +251,8 @@ class Matmul_AB_2D(torch.autograd.Function):
             if opb[cur] is not None:
                 opb[cur].wait()
 
-            torch.addmm(C, A_list[cur], B_list[cur], out=C)
+            # torch.addmm(C, A_list[cur], B_list[cur], out=C)
+            C = torch.add(torch.mm(A_list[cur], B_list[cur]), C)
             cur = 1 - cur
             src_a += 1
             src_b += summa_dim
@@ -381,8 +382,9 @@ class Matmul_ABT_2D(torch.autograd.Function):
             src_b += summa_dim
             src_c += 1
 
-        for op in opr:
-            op.wait()
+        # for op in opr:
+        #     op.wait()
+        torch.cuda.synchronize()
 
         if summa_dim - 2 == col_rank:
             C.copy_(C_list[cur])
@@ -514,8 +516,9 @@ class Matmul_ATB_2D(torch.autograd.Function):
             src_a += 1
             src_c += summa_dim
 
-        for op in opr:
-            op.wait()
+        # for op in opr:
+        #     op.wait()
+        torch.cuda.synchronize()
 
         if summa_dim - 2 == row_rank:
             C.copy_(C_list[cur])

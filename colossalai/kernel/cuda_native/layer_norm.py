@@ -53,26 +53,33 @@ class FusedLayerNormAffineFunction(torch.autograd.Function):
 
 
 class MixedFusedLayerNorm(torch.nn.Module):
-
-    def __init__(self, normalized_shape, eps=1e-5, device=None, dtype=None):
+    def __init__(self, normalized_shape, eps=1e-05, device=None, dtype=None, elementwise_affine=True):
         super(MixedFusedLayerNorm, self).__init__()
-
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = (normalized_shape,)
         self.normalized_shape = torch.Size(normalized_shape)
         self.eps = eps
-        self.weight = Parameter(torch.empty(*normalized_shape, device=device, dtype=dtype))
-        self.bias = Parameter(torch.empty(*normalized_shape, device=device, dtype=dtype))
+        self.elementwise_affine = elementwise_affine
+        if elementwise_affine:
+            self.weight = Parameter(torch.Tensor(*normalized_shape, device=device, dtype=dtype))
+            self.bias = Parameter(torch.Tensor(*normalized_shape, device=device, dtype=dtype))
+        else:
+            self.register_parameter('weight', None)
+            self.register_parameter('bias', None)
         self.reset_parameters()
 
     def reset_parameters(self):
+        if self.elementwise_affine:
+            torch.nn.init.ones_(self.weight)
+            torch.nn.init.zeros_(self.bias)
 
-        init.ones_(self.weight)
-        init.zeros_(self.bias)
-
-    def forward(self, input):
-
-        return FusedLayerNormAffineFunction.apply(input, self.weight, self.bias, self.normalized_shape, self.eps)
+    def forward(self, input_tensor):
+        mean = input_tensor.mean(dim=-1, keepdim=True)
+        var = ((input_tensor - mean) ** 2).mean(dim=-1, keepdim=True)
+        normalized_input = (input_tensor - mean) / torch.sqrt(var + self.eps)
+        if self.elementwise_affine:
+            normalized_input = self.weight * normalized_input + self.bias
+        return normalized_input
 
     def __repr__(self):
         return f'MixedFusedLayerNorm(normalized_shape={self.normalized_shape}, eps={self.eps})'

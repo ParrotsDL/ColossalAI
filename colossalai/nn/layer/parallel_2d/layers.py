@@ -22,6 +22,8 @@ from ._operation import (Matmul_AB_2D, Matmul_ABT_2D, add_bias_2d, all_gather_te
                          reduce_scatter_tensor_2d, split_batch_2d)
 from ._utils import assert_summa_initialization, get_summa_dim_from_env
 
+import os
+rrank = int(os.environ['SLURM_PROCID'])
 
 @LAYERS.register_module
 class Linear2D(ParallelLayer):
@@ -706,8 +708,13 @@ class Embedding2D(ParallelLayer):
         input_ = split_batch_2d(input_)
 
         weight = all_gather_tensor_2d(self.weight, -1, ParallelMode.PARALLEL_2D_COL)
+        # tensor_out_list= []
+        # for i in range(weight.shape[-1]):
+        #     tensor_out_list.append(F.embedding(input_, weight[:,:,i], self.padding_idx, *self.embed_args, **self.embed_kwargs))
+        # output = torch.cat(tensor_out_list, dim=-1)
         output = F.embedding(input_, weight, self.padding_idx, *self.embed_args, **self.embed_kwargs)
-
+        # tensor_out = torch.stack(tensor_out_list, dim=0)
+        # output = tensor_out.transpose(0, -1)
         return output
 
 
