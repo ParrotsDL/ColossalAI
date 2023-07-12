@@ -116,7 +116,16 @@ def _communicate(object_send_next: Union[torch.Tensor, List[torch.Tensor]] = Non
     Returns:
         Tuple[Union[:class:`torch.Tensor`, List[:class:`torch.Tensor`]]]: returns tensor_recv_prev, tensor_recv_next
     """
-
+    # if object_send_next:
+    #     if isinstance(object_send_next, torch.Tensor):
+    #         object_send_next = object_send_next.cpu()
+    #     else:
+    #         object_send_next = [x.cpu() for x in object_send_next]
+    # if object_send_prev:
+    #     if isinstance(object_send_prev, torch.Tensor):
+    #         object_send_prev = object_send_prev.cpu()
+    #     else:
+    #         object_send_prev = [x.cpu() for x in object_send_prev]
     # Create placeholder tensors for receive in forward and backward directions
     # if needed.
     tensor_recv_prev = None
@@ -182,6 +191,16 @@ def _communicate(object_send_next: Union[torch.Tensor, List[torch.Tensor]] = Non
                 tensor_recv_next[index] = gather_split_1d_tensor(tensor_recv_next[index]).view(
                     recv_next_shape[index]).requires_grad_()
 
+    # if tensor_recv_prev:
+    #     if isinstance(tensor_recv_prev, torch.Tensor):
+    #         tensor_recv_prev = tensor_recv_prev.cuda()
+    #     else:
+    #         tensor_recv_prev = [x.cuda() for x in tensor_recv_prev]
+    # if tensor_recv_next:
+    #     if isinstance(tensor_recv_next, torch.Tensor):
+    #         tensor_recv_next = tensor_recv_next.cuda()
+    #     else:
+    #         tensor_recv_next = [x.cuda() for x in tensor_recv_next]
     return tensor_recv_prev, tensor_recv_next
 
 

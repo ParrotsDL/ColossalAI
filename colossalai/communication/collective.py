@@ -94,7 +94,7 @@ def reduce_scatter(tensor: Tensor,
         tensor_in_chunked = tensor_in.chunk(depth,0)
         tensor_list = list(tensor_in_chunked)
         work = dist.reduce_scatter(tensor_out, tensor_list, op=op, group=group, async_op=async_op)
-        out = tensor_out if dim <=0 else tensor_out.transpose(0, dim)
+        out = tensor_out if dim ==0 else tensor_out.transpose(0, dim)
     if async_op:
         return out, work
     else:

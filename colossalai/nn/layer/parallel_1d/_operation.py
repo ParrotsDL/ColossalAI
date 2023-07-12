@@ -70,7 +70,7 @@ class LinearWithAsyncCommunication(torch.autograd.Function):
         use_bias = ctx.use_bias
 
         total_input = input
-        grad_input = grad_output.matmul(weight).to(grad_output.dtype)
+        grad_input = grad_output.matmul(weight)#.to(grad_output.dtype)
 
         # Convert the tensor shapes to 2D for execution compatibility
         grad_output = grad_output.view(grad_output.shape[0] * grad_output.shape[1], grad_output.shape[2])
@@ -83,7 +83,7 @@ class LinearWithAsyncCommunication(torch.autograd.Function):
             # all-reduce scheduled first and have GPU resources allocated
             _ = torch.empty(1, device=grad_output.device) + 1
 
-        grad_weight = grad_output.t().matmul(total_input).to(grad_output.dtype)
+        grad_weight = grad_output.t().matmul(total_input)#.to(grad_output.dtype)
         grad_bias = grad_output.sum(dim=0) if use_bias else None
 
         # if ctx.async_grad_allreduce:

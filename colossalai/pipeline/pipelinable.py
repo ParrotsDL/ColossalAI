@@ -96,6 +96,10 @@ class PipelinableContext(InsertPostInitMethodToModuleSubClasses):
         self._root_children = list(module.children())
         self._model = module
 
+        for _, param in self._model.named_parameters():
+            if param.requires_grad:
+                param.data = torch.tensor([0.])
+
         # store the children to keep the module hierarchy
         layer_spec = LayerSpec(module.__class__, *modified_args, **modified_kwargs)
         layer_spec.set_children(module.children())

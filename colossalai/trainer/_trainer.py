@@ -184,6 +184,7 @@ class Trainer:
                 return_loss=True,
                 return_output_label=return_output_label,
             )
+            torch.cuda.empty_cache()
             self.engine.step()
             self._call_timer(action="stop", item="Train-step", keep_in_history=True)
             self._call_hooks("after_train_iter", output=(logits, label, loss))
